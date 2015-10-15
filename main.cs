@@ -7,9 +7,14 @@ namespace SimMorg {
   * Class containing program entry point
   */
   class Program {
-    public static void Main(string[] args) {
+    public static int Main(string[] args) {
       List<Morg> morgs = new List<Morg>();
       string line;
+
+      if (args.Length < 1) {
+        Console.WriteLine("Error: Invalid arguments");
+        return -1;
+      }
       string inputFile = args[0];
 
       // Set up the display strategy to either print to the console or print
@@ -38,6 +43,7 @@ namespace SimMorg {
         sim.tick();
       }
       Console.WriteLine("Simulation complete!");
+      return 0;
     }
   }
 }
