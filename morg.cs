@@ -3,7 +3,43 @@ using System.Collections.Generic;
 using System.Drawing;
 
 namespace SimMorg {
-  class Morg {
+  interface Observer {
+    void move (int t);
+    void feed ();
+  }
+
+  class MorgDecorator : Morg {
+    protected Morg decoratedMorg;
+    public MorgDecorator (Morg m) : base (m) {
+      this.decoratedMorg = m;
+    }
+  }
+
+  class Oozing : MorgDecorator {
+    public Oozing (Morg m) : base (m) {
+      this.movementStrategy = new Ooze();
+    }
+  }
+
+  class Paddling : MorgDecorator {
+    public Paddling (Morg m) : base (m) {
+      this.movementStrategy = new Paddle();
+    }
+  }
+
+  class Absorbing : MorgDecorator {
+    public Absorbing (Morg m) : base (m) {
+      this.feedingStrategy = new Absorb();
+    }
+  }
+
+  class Enveloping : MorgDecorator {
+    public Enveloping (Morg m) : base (m) {
+      this.feedingStrategy = new Envelop();
+    }
+  }
+
+  class Morg : Observer {
     private Color _color;
     public Color color {
       get { return this._color; }
@@ -42,20 +78,31 @@ namespace SimMorg {
       get { return this._alive; }
     }
 
-    private List<String> _preyTypes = new List<String>();
+    protected List<String> _preyTypes = new List<String>();
     public List<String> preyTypes {
       get { return this._preyTypes; }
     }
-    private List<Morg> observers = new List<Morg>();
-    private MovementStrategy movementStrategy = new Ooze();
-    private FeedingStrategy feedingStrategy = new Envelop();
-    private DistanceStrategy distanceStrategy = new Manhattan();
+    protected List<Observer> observers = new List<Observer>();
+    protected MovementStrategy movementStrategy = new SimpleMove ();
+    protected FeedingStrategy feedingStrategy = new SimpleFeed();
+    protected DistanceStrategy distanceStrategy = new Manhattan ();
 
-    /**
-    * Microorganism constructor
-    */
+
+    /** Copy constructor */
+    public Morg (Morg m) {
+      this._color = m.color;
+      this._name = m.name;
+      this._type = m.type;
+      this._alive = m.alive;
+      this._preyTypes = m._preyTypes;
+      this.position = m.position;
+      this.target = m.target;
+      this.prey = m.prey;
+      this.observers = m.observers;
+    }
+
+    /** Microorganism constructor */
     public Morg (String name, String type, int x, int y) {
-
       this._name = name;
       this._type = type;
       this.position = new Tuple<int, int>(x, y);
@@ -66,27 +113,7 @@ namespace SimMorg {
         this.prey.registerObserver(this);
       }
 
-      if (this.type == "A") {
-        this.movementStrategy = new Paddle();
-        this.feedingStrategy = new Absorb();
-        this._preyTypes.Add ("B");
-        this._preyTypes.Add ("C");
-
-        this._color = Color.Red;
-      } else if (type == "B") {
-        this.movementStrategy = new Ooze();
-        this.feedingStrategy = new Envelop();
-        this._preyTypes.Add ("A");
-
-        this._color = Color.Yellow;
-      } else if (type == "C") {
-        this.movementStrategy = new Paddle();
-        this.feedingStrategy = new Envelop();
-        this._preyTypes.Add ("A");
-        this._preyTypes.Add ("B");
-
-        this._color = Color.Green;
-      }
+      this._color = Color.Red;
     }
 
     public void kill () {
@@ -98,12 +125,14 @@ namespace SimMorg {
       return distanceStrategy.distance(this.position, prey.position);
     }
 
-    public void update (int t) {
+    public void move (int t) {
       this.position = this.movementStrategy.move(t, this.position, this.target);
+    }
+    public void feed () {
       if (this.prey != null) this.feedingStrategy.feed(this, this.prey);
-      this.notifyAll();
     }
 
+    /** Called if the morg doesn't have a prey */
     public void hunt (List<Morg> morgs) {
       foreach (Morg m in morgs) {
         if (this != m && m.alive && this.preyTypes.Contains(m.type)) {
@@ -112,47 +141,35 @@ namespace SimMorg {
         }
       }
     }
-    /**
-    * Register an observer to observe this morg. The observer will be notified
-    * whenever this morg's notifyAll() method is called
-    */
+    /** Register an observer to observe this morg. The observer will be notified
+        whenever this morg's notifyAll() method is called */
     public void registerObserver (Morg observer) {
       this.observers.Add(observer);
     }
 
-    /**
-    * Unregister an observer of this morg
-    */
+    /** Unregister an observer of this morg */
     public void unregisterObserver (Morg observer) {
       this.observers.Remove(observer);
     }
 
-    /**
-    * Unregister an observer of this morg
-    */
+    /** Unregister an observer of this morg */
     public void unregisterAllObservers () {
       this.observers.Clear();
     }
 
-    /**
-    * Call the notify method for all morgs observing this morg
-    */
+    /** Call the notify method for all morgs observing this morg */
     public void notifyAll () {
       foreach (Morg predator in this.observers) {
         predator.notify(this);
       }
     }
 
-    /**
-    * Called when an observed prey is updated
-    */
+    /** Called when an observed prey is updated */
     private void notify (Morg prey) {
       this.target = prey.position;
     }
 
-    /**
-    * Returns a formatted printable string representation of this Morg
-    */
+    /** Returns a formatted printable string representation of this Morg */
     public override string ToString () {
       return String.Format("{0} {1} {2} {3}", this.name.PadRight(10),
           (this.prey == null ? "None" : this.prey.name).PadRight(10),

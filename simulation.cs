@@ -25,7 +25,9 @@ namespace SimMorg {
     /** Run an iteration of the simulation */
     public void tick () {
       foreach (Morg m in this.morgs) {
-        m.update(this.iteration);
+        m.move(this.iteration);
+        m.feed();
+        m.notifyAll();
         if (m.prey == null || !m.prey.alive) m.hunt(this.morgs);
       }
       this.iteration++;

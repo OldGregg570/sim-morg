@@ -42,6 +42,26 @@ namespace SimMorg {
     Tuple<int, int> move (int t, Tuple<int, int> position, Tuple<int, int> target);
   }
 
+  class SimpleMove : MovementStrategy {
+    /** If we have a target, move as a predator. Otherwise, move as prey */
+    public Tuple<int, int> move(int t, Tuple<int, int> position, Tuple<int, int> target) {
+      return target == null ? movePrey(t, position, target) : movePredator(t, position, target);
+    }
+
+    /** Move in a circle */
+    private Tuple<int, int> movePrey(int t, Tuple<int, int> position, Tuple<int, int> target) {
+      Tuple<int, int> d = Constants.dirs[((t / Constants.RUN_LENGTH) % (Constants.dirs.Length / 2)) + 4];
+      return new Tuple<int, int>(position.Item1 + d.Item1, position.Item2 + d.Item2);
+    }
+
+    /** Follow the target */
+    private Tuple<int, int> movePredator(int t, Tuple<int, int> position, Tuple<int, int> target) {
+      int dx = target.Item1 < position.Item1 ? -2 : (target.Item1 == position.Item1 ? 0 : 2);
+      int dy = target.Item2 < position.Item2 ? -2 : (target.Item2 == position.Item2 ? 0 : 2);
+      return new Tuple<int, int>(position.Item1 + dx, position.Item2 + dy);
+    }
+  }
+
   class Ooze : MovementStrategy {
     /** If we have a target, move as a predator. Otherwise, move as prey */
     public Tuple<int, int> move (int t, Tuple<int, int> position, Tuple<int, int> target) {
@@ -86,6 +106,18 @@ namespace SimMorg {
   */
   abstract class FeedingStrategy {
     public abstract bool feed(Morg predator, Morg prey);
+  }
+
+  class SimpleFeed: FeedingStrategy {
+    public override bool feed(Morg predator, Morg prey) {
+      int distance = predator.distance(prey);
+      if (distance == 2) {
+        if (predator.preyTypes.Contains(prey.type)) {
+          prey.kill();
+        }
+      }
+      return distance == 2;
+    }
   }
 
   class Absorb : FeedingStrategy {
