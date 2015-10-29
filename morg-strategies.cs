@@ -114,6 +114,7 @@ namespace SimMorg {
       if (distance == 2) {
         if (predator.preyTypes.Contains(prey.type)) {
           prey.kill();
+          predator.life += prey.life;
         }
       }
       return distance == 2;
@@ -126,6 +127,7 @@ namespace SimMorg {
       if (distance <= 1) {
         if (predator.preyTypes.Contains(prey.type)) {
           prey.kill ();
+          predator.life += prey.life;
         }
       }
       return distance <= 1;
@@ -138,6 +140,7 @@ namespace SimMorg {
       if (distance == 0) {
         if (predator.preyTypes.Contains(prey.type)) {
           prey.kill ();
+          predator.life += prey.life / 2;
         }
       }
       return distance == 0;

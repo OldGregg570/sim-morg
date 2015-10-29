@@ -8,52 +8,24 @@ namespace SimMorg {
     void feed ();
   }
 
-  class MorgDecorator : Morg {
-    protected Morg decoratedMorg;
-    public MorgDecorator (Morg m) : base (m) {
-      this.decoratedMorg = m;
-    }
-  }
-
-  class Oozing : MorgDecorator {
-    public Oozing (Morg m) : base (m) {
-      this.movementStrategy = new Ooze();
-    }
-  }
-
-  class Paddling : MorgDecorator {
-    public Paddling (Morg m) : base (m) {
-      this.movementStrategy = new Paddle();
-    }
-  }
-
-  class Absorbing : MorgDecorator {
-    public Absorbing (Morg m) : base (m) {
-      this.feedingStrategy = new Absorb();
-    }
-  }
-
-  class Enveloping : MorgDecorator {
-    public Enveloping (Morg m) : base (m) {
-      this.feedingStrategy = new Envelop();
-    }
-  }
-
   class Morg : Observer {
     private Color _color;
     public Color color {
       get { return this._color; }
+      set { this._color = value; }
     }
 
     private String _name;
-    public String name {
-      get { return this._name; }
+    public String name { get { return this._name; } }
+
+    private int _life;
+    public int life {
+      get { return this._life; }
+      set { this._life = value; }
     }
 
     private String _type;
-    public String type {
-      get { return this._type; }
-    }
+    public String type { get { return this._type; } }
 
     private Tuple<int, int> _position;
     public Tuple<int, int> position {
@@ -74,26 +46,23 @@ namespace SimMorg {
     }
 
     private bool _alive = true;
-    public bool alive {
-      get { return this._alive; }
-    }
+    public bool alive { get { return this._alive; } }
 
     protected List<String> _preyTypes = new List<String>();
-    public List<String> preyTypes {
-      get { return this._preyTypes; }
-    }
-    protected List<Observer> observers = new List<Observer>();
-    protected MovementStrategy movementStrategy = new SimpleMove ();
-    protected FeedingStrategy feedingStrategy = new SimpleFeed();
-    protected DistanceStrategy distanceStrategy = new Manhattan ();
+    public List<String> preyTypes { get { return this._preyTypes; } }
 
+    protected List<Observer> observers = new List<Observer>();
+    protected MovementStrategy movementStrategy = new SimpleMove();
+    protected FeedingStrategy feedingStrategy = new SimpleFeed();
+    protected DistanceStrategy distanceStrategy = new Manhattan();
 
     /** Copy constructor */
-    public Morg (Morg m) {
+    public Morg(Morg m) {
       this._color = m.color;
       this._name = m.name;
       this._type = m.type;
       this._alive = m.alive;
+      this._life = m.life;
       this._preyTypes = m._preyTypes;
       this.position = m.position;
       this.target = m.target;
@@ -102,9 +71,11 @@ namespace SimMorg {
     }
 
     /** Microorganism constructor */
-    public Morg (String name, String type, int x, int y) {
+    public Morg(String name, String type, int x, int y, Color color) {
       this._name = name;
       this._type = type;
+      this._color = color;
+      this._life = 80;
       this.position = new Tuple<int, int>(x, y);
       this.prey = prey;
 
@@ -112,11 +83,13 @@ namespace SimMorg {
         this.target = this.prey.position;
         this.prey.registerObserver(this);
       }
-
-      this._color = Color.Red;
     }
 
-    public void kill () {
+    public void addPreyType(string type) {
+      this._preyTypes.Add(type);
+    }
+
+    public void kill() {
       this._alive = false;
       this.unregisterAllObservers();
     }
@@ -125,15 +98,17 @@ namespace SimMorg {
       return distanceStrategy.distance(this.position, prey.position);
     }
 
-    public void move (int t) {
+    public void move(int t) {
+      this.life -= 5;
       this.position = this.movementStrategy.move(t, this.position, this.target);
     }
-    public void feed () {
-      if (this.prey != null) this.feedingStrategy.feed(this, this.prey);
+
+    public void feed() {
+      if (this.prey != null && this.prey.alive) this.feedingStrategy.feed(this, this.prey);
     }
 
     /** Called if the morg doesn't have a prey */
-    public void hunt (List<Morg> morgs) {
+    public void hunt(List<Morg> morgs) {
       foreach (Morg m in morgs) {
         if (this != m && m.alive && this.preyTypes.Contains(m.type)) {
           this.prey = m;
@@ -143,38 +118,76 @@ namespace SimMorg {
     }
     /** Register an observer to observe this morg. The observer will be notified
         whenever this morg's notifyAll() method is called */
-    public void registerObserver (Morg observer) {
+    public void registerObserver(Morg observer) {
       this.observers.Add(observer);
     }
 
     /** Unregister an observer of this morg */
-    public void unregisterObserver (Morg observer) {
+    public void unregisterObserver(Morg observer) {
       this.observers.Remove(observer);
     }
 
     /** Unregister an observer of this morg */
-    public void unregisterAllObservers () {
+    public void unregisterAllObservers() {
       this.observers.Clear();
     }
 
     /** Call the notify method for all morgs observing this morg */
-    public void notifyAll () {
+    public void notifyAll() {
       foreach (Morg predator in this.observers) {
         predator.notify(this);
       }
     }
 
     /** Called when an observed prey is updated */
-    private void notify (Morg prey) {
+    private void notify(Morg prey) {
       this.target = prey.position;
     }
 
     /** Returns a formatted printable string representation of this Morg */
-    public override string ToString () {
-      return String.Format("{0} {1} {2} {3}", this.name.PadRight(10),
-          (this.prey == null ? "None" : this.prey.name).PadRight(10),
-           this.alive ? String.Format("({0}, {1})", this.position.Item1, this.position.Item2) : "Dead",
-           this.type);
+    public override string ToString() {
+      return String.Format("\tName: {0}\n\tPrey: {1}\n\tPos: {2}\n\tType: {3}\n\tLife: {4}\n\n",
+              this.name,
+              (this.prey == null ? "None" : this.prey.name),
+              this.alive ? String.Format("({0}, {1})", this.position.Item1, this.position.Item2) : "Dead",
+              this.type,
+              this.life);
+    }
+
+    internal FeedingStrategy FeedingStrategy {
+      get {
+        throw new System.NotImplementedException();
+      }
+
+      set {
+      }
+    }
+
+    internal MorgDecorator MorgDecorator {
+      get {
+        throw new System.NotImplementedException();
+      }
+
+      set {
+      }
+    }
+
+    internal MovementStrategy MovementStrategy {
+      get {
+        throw new System.NotImplementedException();
+      }
+
+      set {
+      }
+    }
+
+    internal DistanceStrategy DistanceStrategy {
+      get {
+        throw new System.NotImplementedException();
+      }
+
+      set {
+      }
     }
   }
 }
